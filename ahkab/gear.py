@@ -142,10 +142,11 @@ def get_df(pv_array, suggested_step, predict=False):
             "You must set Gear's order before using it! e.g. gear.order = 5")
         sys.exit(1)
 
-    s = []
-    s.append(0)
-    for index in range(1, order + 2):
-        s.append(suggested_step + pv_array[0][0] - pv_array[index - 1][0])
+    s = [0]
+    s.extend(
+        suggested_step + pv_array[0][0] - pv_array[index - 1][0]
+        for index in range(1, order + 2)
+    )
 
     # build e[k, i]
     e = numpy.mat(numpy.zeros((order + 2, order + 2)))
@@ -160,7 +161,7 @@ def get_df(pv_array, suggested_step, predict=False):
     for k_index in range(1, order + 2):
         alpha[0, k_index] = 1.0
         for j_index in range(order + 1):
-            alpha[0, k_index] = alpha[0, k_index] * e[k_index, j_index + 1]
+            alpha[0, k_index] *= e[k_index, j_index + 1]
 
     # build gamma
     gamma = numpy.mat(numpy.zeros((1, order + 1)))
@@ -170,7 +171,7 @@ def get_df(pv_array, suggested_step, predict=False):
 
     gamma[0, 0] = 0
     for index in range(1, order + 1):
-        gamma[0, 0] = gamma[0, 0] - gamma[0, index]
+        gamma[0, 0] -= gamma[0, index]
 
     # values to be returned
     C1 = gamma[0, 0]

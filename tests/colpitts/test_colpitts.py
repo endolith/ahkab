@@ -25,17 +25,19 @@ ea = 1e-9
 
 def _run_test(ref_run=False):
 	netlist = os.path.join(reference_path, "colpitts.ckt")
-	if not ref_run:
-		data_file = os.path.join(reference_path, "colpitts")
-	else:
-		data_file = os.path.join(reference_path, "colpitts-ref")
-	print "Running test... "
+	data_file = (
+		os.path.join(reference_path, "colpitts-ref")
+		if ref_run
+		else os.path.join(reference_path, "colpitts")
+	)
+
+	netlist = os.path.join(reference_path, "colpitts.ckt")
 	start = time.time()
 	main(filename=netlist, outfile=data_file, verbose=0)
 	stop = time.time()
 	times = stop - start
-	print "Done. The test took %f s" % times
-	data = numpy.loadtxt(data_file+".tran")
+	netlist = os.path.join(reference_path, "colpitts.ckt")
+	data = numpy.loadtxt(f"{data_file}.tran")
 	return data, times
 
 def teardown_func():

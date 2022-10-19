@@ -91,8 +91,7 @@ class switch_device:
         self.n2 = n2
         self.ports = ((self.n1, self.n2), (self.sn1, self.sn2))
         self.model = model
-        self.opdict = {}
-        self.opdict.update({'state': (float('nan'), float('nan'))})
+        self.opdict = {'state': (float('nan'), float('nan'))}
         self.part_id = part_id
         self.is_nonlinear = True
         self.is_symbolic = True
@@ -118,8 +117,7 @@ class switch_device:
         return ((self.n1, self.n2),)
 
     def __str__(self):
-        rep = self.model.name + " " + str(self.device.is_on)
-        return rep
+        return f"{self.model.name} {str(self.device.is_on)}"
 
     def i(self, op_index, ports_v, time=0):
         """Returns the current flowing in the element with the voltages
@@ -130,11 +128,10 @@ class switch_device:
               It has no effect here. Set it to None during DC analysis.
 
         """
-        ret = self.model.get_i(ports_v, self.device)
         # This may be used for debugging
         # print str(ports_v)+" Isw: %g\tRo: %g\tgm: %g" % (ret, 1/self.g(0,
         # ports_v, 0), self.g(0, ports_v, 1))
-        return ret
+        return self.model.get_i(ports_v, self.device)
 
     def update_status_dictionary(self, ports_v):
         """Updates an internal dictionary that can then be used to provide
@@ -201,10 +198,14 @@ class switch_device:
         return get_value
 
     def print_netlist_elem_line(self, nodes_dict):
-        return "%s %s %s %s %s %s %s" % (self.part_id, nodes_dict[self.n1],
-                                nodes_dict[self.n2], nodes_dict[self.sn1],
-                                nodes_dict[self.sn2], self.model.name + " " + \
-                                str(self.device.is_on))
+        return "%s %s %s %s %s %s %s" % (
+            self.part_id,
+            nodes_dict[self.n1],
+            nodes_dict[self.n2],
+            nodes_dict[self.sn1],
+            nodes_dict[self.sn2],
+            f"{self.model.name} {str(self.device.is_on)}",
+        )
 
 
 VT_DEFAULT = 0.0
@@ -301,11 +302,24 @@ class vswitch_model:
         """All the internal parameters of the model get printed out,
         for visual inspection.
         """
-        arr = []
-        arr.append(
-            [self.name, "", "", "SWITCH MODEL", "", "", "", "", "",  "", "", ""])
-        arr.append(["VT", "[V]", self.VT, "VH", "[V]:", self.VH,
-                   "RON", "[ohm]", self.RON, "ROFF", "[ohm]", self.ROFF])
+        arr = [
+            [self.name, "", "", "SWITCH MODEL", "", "", "", "", "", "", "", ""],
+            [
+                "VT",
+                "[V]",
+                self.VT,
+                "VH",
+                "[V]:",
+                self.VH,
+                "RON",
+                "[ohm]",
+                self.RON,
+                "ROFF",
+                "[ohm]",
+                self.ROFF,
+            ],
+        ]
+
         printing.table_print(arr)
 
     def get_i(self, (vout, vin), dev, debug=False):

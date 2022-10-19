@@ -43,7 +43,7 @@ from . import printing
 from . import utilities
 from . import devices
 from . import results
-           
+
 # differentiation methods, add them here
 IMPLICIT_EULER = "IMPLICIT_EULER"
 TRAP = "TRAP"

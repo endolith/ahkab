@@ -265,7 +265,7 @@ texinfo_documents = [
 def is_skip_function(app, what, name, obj, skip, options):
         rg = re.compile('(test)', re.IGNORECASE|re.DOTALL)
         m = rg.match(name)
-        ret = True if m else False
+        ret = bool(m)
         ret = ret or (name[0] == '_')
         return ret
 

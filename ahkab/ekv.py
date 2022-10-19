@@ -118,13 +118,13 @@ class ekv_device:
         self.device.M = int(M)  # parallel multiple device number
         self.device.N = int(N)  # series multiple device number
         self.ekv_model = model
-        self.opdict = {}
-        self.opdict.update(
-            {'state': (float('nan'), float('nan'), float('nan'))})
-        self.opdict.update({'ifn': self.INIT_IFRN_GUESS})
-        self.opdict.update({'irn': self.INIT_IFRN_GUESS})
-        self.opdict.update(
-            {'ip_abs_err': self.ekv_model.get_ip_abs_err(self.device)})
+        self.opdict = {
+            'state': (float('nan'), float('nan'), float('nan')),
+            'ifn': self.INIT_IFRN_GUESS,
+            'irn': self.INIT_IFRN_GUESS,
+        }
+
+        self.opdict['ip_abs_err'] = self.ekv_model.get_ip_abs_err(self.device)
         self.part_id = part_id
         self.is_nonlinear = True
         self.is_symbolic = True
@@ -133,7 +133,7 @@ class ekv_device:
 
         devcheck, reason = self.ekv_model._device_check(self.device)
         if not devcheck:
-            raise Exception, reason + " out of boundaries."
+            raise (Exception, f"{reason} out of boundaries.")
 
     def get_drive_ports(self, op):
         """Returns a tuple of tuples of ports nodes, as:
@@ -148,17 +148,12 @@ class ekv_device:
 
     def __str__(self):
         mos_type = self._get_mos_type()
-        rep = " " + self.ekv_model.name + " w=" + str(self.device.W) + " l=" + \
-            str(self.device.L) + " M=" + str(self.device.M) + " N=" + \
-            str(self.device.N)
-
-        return rep
+        return f" {self.ekv_model.name} w={str(self.device.W)} l={str(self.device.L)} M={str(self.device.M)} N={str(self.device.N)}"
 
     def _get_mos_type(self):
         """Returns N or P (capitalized)
         """
-        mtype = 'N' if self.ekv_model.NPMOS == 1 else 'P'
-        return mtype
+        return 'N' if self.ekv_model.NPMOS == 1 else 'P'
 
     def i(self, op_index, ports_v, time=0):
         """Returns the current flowing in the element with the voltages
@@ -177,10 +172,16 @@ class ekv_device:
     def update_status_dictionary(self, ports_v):
         if self.opdict is None:
             self.opdict = {}
-        if not (self.opdict['state'] == ports_v[0] and self.opdict.has_key('gmd')) or \
-            not (self.opdict['state'] == ports_v[0] and self.opdict.has_key('gmg')) or \
-            not (self.opdict['state'] == ports_v[0] and self.opdict.has_key('gms')) or \
-                not (self.opdict['state'] == ports_v[0] and self.opdict.has_key('Ids')):
+        if (
+            self.opdict['state'] != ports_v[0]
+            or not self.opdict.has_key('gmd')
+            or self.opdict['state'] != ports_v[0]
+            or not self.opdict.has_key('gmg')
+            or self.opdict['state'] != ports_v[0]
+            or not self.opdict.has_key('gms')
+            or self.opdict['state'] != ports_v[0]
+            or not self.opdict.has_key('Ids')
+        ):
 
             self.opdict['state'] == ports_v[0]
             self.opdict['gmd'] = self.g(0, ports_v[0], 0)
@@ -193,10 +194,7 @@ class ekv_device:
         gms = self.opdict['gms']
         ids = self.opdict['Ids']
 
-        if ids == 0:
-            TEF = float('nan')
-        else:
-            TEF = abs(gms * constants.Vth() / ids)
+        TEF = float('nan') if ids == 0 else abs(gms * constants.Vth() / ids)
         self.opdict['TEF'] = TEF
 
     def print_op_info(self, ports_v):
@@ -218,24 +216,114 @@ class ekv_device:
             wmsi_status = "STRONG INVERSION"
 
         arr = [
-            [self.part_id, mos_type.upper() + " ch", wmsi_status, "", "", sat_status, "", "", "", "", "", ""], ]
+            [
+                self.part_id,
+                f"{mos_type.upper()} ch",
+                wmsi_status,
+                "",
+                "",
+                sat_status,
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ]
+        ]
+
         arr.append(
-            ["beta", "[A/V^2]:", self.opdict['beta'], "Weff", "[m]:", str(self.opdict['Weff']) + " (" + str(self.device.W) + ")",
-             "Leff", "[m]:", str(self.opdict['Leff']) + " (" + str(self.device.L) + ")", "M/N:", "", str(self.device.M) + "/" + str(self.device.N)])
-        arr.append(
-            ["Vdb", "[V]:", float(ports_v[0][0]), "Vgb", "[V]:", float(ports_v[0][1]),
-             "Vsb", "[V]:", float(ports_v[0][2]),  "Vp", "[V]:", self.opdict['Vp'], ])
-        arr.append(
-            ["VTH", "[V]:", self.opdict['VTH'], "VOD", "[V]:", self.opdict['VOD'],
-             "nq: ", "", self.opdict['nq'], "VA", "[V]:", str(self.opdict['Ids'] / self.opdict['gmd'])])
-        arr.append(
-            ["Ids", "[A]:", self.opdict['Ids'], "nv: ", "", self.opdict['nv'],
-             "Ispec", "[A]:", self.opdict["Ispec"], "TEF:", "", str(self.opdict['TEF']), ])
-        arr.append(["gmg", "[S]:", self.opdict['gmg'], "gms", "[S]:",
-                   self.opdict['gms'], "rob", "[Ohm]:", 1 / self.opdict['gmd'], "", "", ""])
-        arr.append(
-            ["if:", "", self.opdict['ifn'], "ir:", "", self.opdict['irn'],
-             "Qf", "[C/m^2]:", self.opdict["qf"], "Qr", "[C/m^2]:", self.opdict["qr"], ])
+            [
+                "beta",
+                "[A/V^2]:",
+                self.opdict['beta'],
+                "Weff",
+                "[m]:",
+                str(self.opdict['Weff']) + " (" + str(self.device.W) + ")",
+                "Leff",
+                "[m]:",
+                str(self.opdict['Leff']) + " (" + str(self.device.L) + ")",
+                "M/N:",
+                "",
+                f"{str(self.device.M)}/{str(self.device.N)}",
+            ]
+        )
+
+        arr.extend(
+            (
+                [
+                    "Vdb",
+                    "[V]:",
+                    float(ports_v[0][0]),
+                    "Vgb",
+                    "[V]:",
+                    float(ports_v[0][1]),
+                    "Vsb",
+                    "[V]:",
+                    float(ports_v[0][2]),
+                    "Vp",
+                    "[V]:",
+                    self.opdict['Vp'],
+                ],
+                [
+                    "VTH",
+                    "[V]:",
+                    self.opdict['VTH'],
+                    "VOD",
+                    "[V]:",
+                    self.opdict['VOD'],
+                    "nq: ",
+                    "",
+                    self.opdict['nq'],
+                    "VA",
+                    "[V]:",
+                    str(self.opdict['Ids'] / self.opdict['gmd']),
+                ],
+                [
+                    "Ids",
+                    "[A]:",
+                    self.opdict['Ids'],
+                    "nv: ",
+                    "",
+                    self.opdict['nv'],
+                    "Ispec",
+                    "[A]:",
+                    self.opdict["Ispec"],
+                    "TEF:",
+                    "",
+                    str(self.opdict['TEF']),
+                ],
+                [
+                    "gmg",
+                    "[S]:",
+                    self.opdict['gmg'],
+                    "gms",
+                    "[S]:",
+                    self.opdict['gms'],
+                    "rob",
+                    "[Ohm]:",
+                    1 / self.opdict['gmd'],
+                    "",
+                    "",
+                    "",
+                ],
+                [
+                    "if:",
+                    "",
+                    self.opdict['ifn'],
+                    "ir:",
+                    "",
+                    self.opdict['irn'],
+                    "Qf",
+                    "[C/m^2]:",
+                    self.opdict["qf"],
+                    "Qr",
+                    "[C/m^2]:",
+                    self.opdict["qr"],
+                ],
+            )
+        )
+
         # arr.append([  "", "", "", "", "", ""])
 
         return printing.table_setup(arr)
@@ -262,20 +350,18 @@ class ekv_device:
             g = self.ekv_model.get_gms(self.device, ports_v, self.opdict)
 
         if op_index == 0 and g == 0:
-            if port_index == 2:
-                sign = -1
-            else:
-                sign = +1
+            sign = -1 if port_index == 2 else +1
             g = sign * options.gmin * 2.0
 
         # print type(g), g
 
-        if op_index == 0 and port_index == 0:
-            self.opdict.update({'gmd': g})
-        elif op_index == 0 and port_index == 1:
-            self.opdict.update({'gmg': g})
-        elif op_index == 0 and port_index == 2:
-            self.opdict.update({'gms': g})
+        if op_index == 0:
+            if port_index == 0:
+                self.opdict.update({'gmd': g})
+            elif port_index == 1:
+                self.opdict.update({'gmg': g})
+            elif port_index == 2:
+                self.opdict.update({'gms': g})
 
         return g
 
@@ -394,18 +480,80 @@ class ekv_mos_model:
         (ie not available) if they were not provided in the netlist
         or some not provided are calculated from the others.
         """
-        arr = []
         TYPE = 'N' if self.NPMOS == 1 else "P"
-        arr.append(
-            [self.name, "", "", TYPE + " MOS", "EKV MODEL", "", "", "", "",  "", "", ""])
-        arr.append(["KP", "[A/V^2]", self.KP, "VTO", "[V]:", self.VTO,
-                   "TOX", "[m]", self.TOX, "COX", "[F/m^2]:", self.COX])
-        arr.append(["PHI", "[V]:", self.PHI, "GAMMA", "sqrt(V)", self.GAMMA,
-                   "NSUB", "[cm^-3]", self.NSUB,  "VFB", "[V]:", self.VFB])
-        arr.append(
-            ["U0", "[cm^2/(V*s)]:", self.U0, "TCV", "[V/K]", self.TCV, "BEX", "", self.BEX,  "", "", ""])
-        arr.append(["INTERNAL", "", "", "SAT LIMIT", "", self.SATLIM,
-                   "W/M/S INV FACTOR", "", self.WMSI_factor,  "", "", ""])
+        arr = [
+            [
+                self.name,
+                "",
+                "",
+                f"{TYPE} MOS",
+                "EKV MODEL",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ],
+            [
+                "KP",
+                "[A/V^2]",
+                self.KP,
+                "VTO",
+                "[V]:",
+                self.VTO,
+                "TOX",
+                "[m]",
+                self.TOX,
+                "COX",
+                "[F/m^2]:",
+                self.COX,
+            ],
+            [
+                "PHI",
+                "[V]:",
+                self.PHI,
+                "GAMMA",
+                "sqrt(V)",
+                self.GAMMA,
+                "NSUB",
+                "[cm^-3]",
+                self.NSUB,
+                "VFB",
+                "[V]:",
+                self.VFB,
+            ],
+            [
+                "U0",
+                "[cm^2/(V*s)]:",
+                self.U0,
+                "TCV",
+                "[V/K]",
+                self.TCV,
+                "BEX",
+                "",
+                self.BEX,
+                "",
+                "",
+                "",
+            ],
+            [
+                "INTERNAL",
+                "",
+                "",
+                "SAT LIMIT",
+                "",
+                self.SATLIM,
+                "W/M/S INV FACTOR",
+                "",
+                self.WMSI_factor,
+                "",
+                "",
+                "",
+            ],
+        ]
+
         printing.table_print(arr)
 
     def get_voltages(self, vd, vg, vs):
@@ -744,35 +892,33 @@ class ekv_mos_model:
     def qsmall2ismall(self, qsmall):
         """ q(f,r) -> i(f,r)
         Convert a source/drain scaled charge to the corresponding normalized current."""
-        ismall = qsmall ** 2 + qsmall
-        return ismall
+        return qsmall ** 2 + qsmall
 
     def _self_check(self):
         """Performs sanity check on the model parameters."""
         ret = True, ""
         if self.NSUB is not None and self.NSUB < 0:
-            ret = (False, "NSUB " + str(self.NSUB))
-        elif self.U0 is not None and not self.U0 > 0:
-            ret = (False, "UO " + str(self.U0))
-        elif not self.GAMMA > 0:
-            ret = (False, "GAMMA " + str(self.GAMMA))
-        elif not self.PHI > 0.1:
-            ret = (False, "PHI " + str(self.PHI))
+            ret = False, f"NSUB {str(self.NSUB)}"
+        elif self.U0 is not None and self.U0 <= 0:
+            ret = False, f"UO {str(self.U0)}"
+        elif self.GAMMA <= 0:
+            ret = False, f"GAMMA {str(self.GAMMA)}"
+        elif self.PHI <= 0.1:
+            ret = False, f"PHI {str(self.PHI)}"
         return ret
 
     def _device_check(self, adev):
         """Performs sanity check on the device parameters."""
-        if not adev.L > 0:
-            ret = (False, "L")
-        elif not adev.W > 0:
-            ret = (False, "W")
-        elif not adev.N > 0:
-            ret = (False, "N")
-        elif not adev.M > 0:
-            ret = (False, "M")
+        if adev.L <= 0:
+            return False, "L"
+        elif adev.W <= 0:
+            return False, "W"
+        elif adev.N <= 0:
+            return False, "N"
+        elif adev.M <= 0:
+            return False, "M"
         else:
-            ret = (True, "")
-        return ret
+            return True, ""
 
 if __name__ == '__main__':
     # Tests

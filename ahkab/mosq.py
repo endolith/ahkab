@@ -99,9 +99,7 @@ class mosq_device:
         self.device.mckey = None
         self.mosq_model = model
         self.mc_enabled = False
-        self.opdict = {}
-        self.opdict.update(
-            {'state': (float('nan'), float('nan'), float('nan'))})
+        self.opdict = {'state': (float('nan'), float('nan'), float('nan'))}
         self.part_id = part_id
         self.is_nonlinear = True
         self.is_symbolic = True
@@ -110,7 +108,7 @@ class mosq_device:
 
         devcheck, reason = self.mosq_model._device_check(self.device)
         if not devcheck:
-            raise Exception, reason + " out of boundaries."
+            raise (Exception, f"{reason} out of boundaries.")
 
     def get_drive_ports(self, op):
         """Returns a tuple of tuples of ports nodes, as:
@@ -125,17 +123,12 @@ class mosq_device:
 
     def __str__(self):
         mos_type = self._get_mos_type()
-        rep = self.part_id + " %(nd)s %(ng)s %(ns)s %(nb)%s " + \
-              self.mosq_model.name + " w=" + str(self.device.W) + " l=" + \
-              str(self.device.L) + " M=" + str(self.device.M) + " N=" + \
-              str(self.device.N)
-        return rep
+        return f"{self.part_id} %(nd)s %(ng)s %(ns)s %(nb)%s {self.mosq_model.name} w={str(self.device.W)} l={str(self.device.L)} M={str(self.device.M)} N={str(self.device.N)}"
 
     def _get_mos_type(self):
         """Returns N or P (capitalized)
         """
-        mtype = 'N' if self.mosq_model.NPMOS == 1 else 'P'
-        return mtype
+        return 'N' if self.mosq_model.NPMOS == 1 else 'P'
 
     def i(self, op_index, ports_v, time=0):
         """Returns the current flowing in the element with the voltages
@@ -146,18 +139,21 @@ class mosq_device:
               It has no effect here. Set it to None during DC analysis.
 
         """
-        # print ports_v
-        ret = self.mosq_model.get_ids(self.device, ports_v, self.opdict)
-
-        return ret
+        return self.mosq_model.get_ids(self.device, ports_v, self.opdict)
 
     def update_status_dictionary(self, ports_v):
         if self.opdict is None:
             self.opdict = {}
-        if not (self.opdict['state'] == ports_v[0] and self.opdict.has_key('gmd')) or \
-            not (self.opdict['state'] == ports_v[0] and self.opdict.has_key('gm')) or \
-            not (self.opdict['state'] == ports_v[0] and self.opdict.has_key('gmb')) or \
-                not (self.opdict['state'] == ports_v[0] and self.opdict.has_key('Ids')):
+        if (
+            self.opdict['state'] != ports_v[0]
+            or not self.opdict.has_key('gmd')
+            or self.opdict['state'] != ports_v[0]
+            or not self.opdict.has_key('gm')
+            or self.opdict['state'] != ports_v[0]
+            or not self.opdict.has_key('gmb')
+            or self.opdict['state'] != ports_v[0]
+            or not self.opdict.has_key('Ids')
+        ):
 
             self.opdict['state'] == ports_v[0]
             self.opdict['gmd'] = self.g(0, ports_v[0], 0)
@@ -173,24 +169,93 @@ class mosq_device:
         """Operating point info, for design/verification. """
         self.update_status_dictionary(ports_v)
         sat_status = "SATURATION" if self.opdict['SAT'] else "LINEAR"
-        if not self.opdict["ON"]:
-            status = "OFF"
-        else:
-            status = "ON"
-
+        status = "ON" if self.opdict["ON"] else "OFF"
         arr = [
-            [self.part_id + " ch", status, "", "", sat_status, "", "", "", "", "", "", ""], ]
-        arr.append(
-            ["beta", "[A/V^2]:", self.opdict['beta'], "Weff", "[m]:", str(self.opdict['W']) + " (" + str(self.device.W) + ")",
-             "L", "[m]:", str(self.opdict['L']) + " (" + str(self.device.L) + ")", "M/N:", "", str(self.device.M) + "/" + str(self.device.N)])
-        arr.append(["Vds", "[V]:", float(ports_v[0][0]), "Vgs", "[V]:", float(
-            ports_v[0][1]), "Vbs", "[V]:", float(ports_v[0][2]),  "", "", ""])
-        arr.append(["VTH", "[V]:", self.opdict['VTH'], "VOD", "[V]:", self.opdict[
-                   'VOD'], "", "", "", "VA", "[V]:", str(self.opdict['Ids'] / self.opdict['gmd'])])
-        arr.append(
-            ["Ids", "[A]:", self.opdict['Ids'], "", "", "", "", "", "", "", "", ''])
-        arr.append(["gm", "[S]:", self.opdict['gm'], "gmb", "[S]:",
-                   self.opdict['gmb'], "ro", "[Ohm]:", 1 / self.opdict['gmd'], "", "", ""])
+            [
+                f"{self.part_id} ch",
+                status,
+                "",
+                "",
+                sat_status,
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ],
+            [
+                "beta",
+                "[A/V^2]:",
+                self.opdict['beta'],
+                "Weff",
+                "[m]:",
+                str(self.opdict['W']) + " (" + str(self.device.W) + ")",
+                "L",
+                "[m]:",
+                str(self.opdict['L']) + " (" + str(self.device.L) + ")",
+                "M/N:",
+                "",
+                f"{str(self.device.M)}/{str(self.device.N)}",
+            ],
+            [
+                "Vds",
+                "[V]:",
+                float(ports_v[0][0]),
+                "Vgs",
+                "[V]:",
+                float(ports_v[0][1]),
+                "Vbs",
+                "[V]:",
+                float(ports_v[0][2]),
+                "",
+                "",
+                "",
+            ],
+            [
+                "VTH",
+                "[V]:",
+                self.opdict['VTH'],
+                "VOD",
+                "[V]:",
+                self.opdict['VOD'],
+                "",
+                "",
+                "",
+                "VA",
+                "[V]:",
+                str(self.opdict['Ids'] / self.opdict['gmd']),
+            ],
+            [
+                "Ids",
+                "[A]:",
+                self.opdict['Ids'],
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                '',
+            ],
+            [
+                "gm",
+                "[S]:",
+                self.opdict['gm'],
+                "gmb",
+                "[S]:",
+                self.opdict['gmb'],
+                "ro",
+                "[Ohm]:",
+                1 / self.opdict['gmd'],
+                "",
+                "",
+                "",
+            ],
+        ]
 
         return printing.table_setup(arr)
 
@@ -216,20 +281,18 @@ class mosq_device:
             g = self.mosq_model.get_gmb(self.device, ports_v, self.opdict)
 
         if op_index == 0 and g == 0:
-            if port_index == 2:
-                sign = -1
-            else:
-                sign = +1
+            sign = -1 if port_index == 2 else +1
             g = sign * options.gmin * 2
 
         # print type(g), g
 
-        if op_index == 0 and port_index == 0:
-            self.opdict.update({'gmd': g})
-        elif op_index == 0 and port_index == 1:
-            self.opdict.update({'gm': g})
-        elif op_index == 0 and port_index == 2:
-            self.opdict.update({'gmb': g})
+        if op_index == 0:
+            if port_index == 0:
+                self.opdict.update({'gmd': g})
+            elif port_index == 1:
+                self.opdict.update({'gm': g})
+            elif port_index == 2:
+                self.opdict.update({'gmb': g})
 
         return g
 
@@ -243,10 +306,7 @@ class mosq_device:
 
     def setup_mc(self, status, mckey):
         self.mc_enabled = status
-        if self.mc_enabled:
-            self.device.mckey = mckey
-        else:
-            self.device.mckey = None
+        self.device.mckey = mckey if self.mc_enabled else None
 
     def print_netlist_elem_line(self, nodes_dict):
         mos_type = self._get_mos_type()
@@ -357,16 +417,66 @@ class mosq_mos_model:
         (ie not available) if they were not provided in the netlist
         or some not provided are calculated from the others.
         """
-        arr = []
         TYPE = 'N' if self.NPMOS == 1 else "P"
-        arr.append(
-            [self.name, "", "", TYPE + " MOS", "SQUARE MODEL", "", "", "", "",  "", "", ""])
-        arr.append(["KP", "[A/V^2]", self.KP, "VTO", "[V]:", self.VTO,
-                   "TOX", "[m]", self.TOX, "COX", "[F/m^2]:", self.COX])
-        arr.append(["PHI", "[V]:", self.PHI, "GAMMA", "sqrt(V)", self.GAMMA,
-                   "NSUB", "[cm^-3]", self.NSUB,  "VFB", "[V]:", self.VFB])
-        arr.append(
-            ["U0", "[cm^2/(V*s)]:", self.U0, "TCV", "[V/K]", self.TCV, "BEX", "", self.BEX,  "", "", ""])
+        arr = [
+            [
+                self.name,
+                "",
+                "",
+                f"{TYPE} MOS",
+                "SQUARE MODEL",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ],
+            [
+                "KP",
+                "[A/V^2]",
+                self.KP,
+                "VTO",
+                "[V]:",
+                self.VTO,
+                "TOX",
+                "[m]",
+                self.TOX,
+                "COX",
+                "[F/m^2]:",
+                self.COX,
+            ],
+            [
+                "PHI",
+                "[V]:",
+                self.PHI,
+                "GAMMA",
+                "sqrt(V)",
+                self.GAMMA,
+                "NSUB",
+                "[cm^-3]",
+                self.NSUB,
+                "VFB",
+                "[V]:",
+                self.VFB,
+            ],
+            [
+                "U0",
+                "[cm^2/(V*s)]:",
+                self.U0,
+                "TCV",
+                "[V/K]",
+                self.TCV,
+                "BEX",
+                "",
+                self.BEX,
+                "",
+                "",
+                "",
+            ],
+        ]
+
         printing.table_print(arr)
 
     def get_voltages(self, vds, vgs, vbs):
@@ -381,9 +491,9 @@ class mosq_mos_model:
         vds = float(vds)
         vgs = float(vgs)
         vbs = float(vbs)
-        vds = vds * self.NPMOS
-        vgs = vgs * self.NPMOS
-        vbs = vbs * self.NPMOS
+        vds *= self.NPMOS
+        vgs *= self.NPMOS
+        vbs *= self.NPMOS
         if vds < 0:
             vds_new = -vds
             vgs_new = vgs - vds
@@ -532,32 +642,31 @@ class mosq_mos_model:
         """Performs sanity check on the model parameters."""
         ret = True, ""
         if self.NSUB is not None and self.NSUB < 0:
-            ret = (False, "NSUB " + str(self.NSUB))
-        elif self.U0 is not None and not self.U0 > 0:
-            ret = (False, "UO " + str(self.U0))
-        elif not self.GAMMA > 0:
-            ret = (False, "GAMMA " + str(self.GAMMA))
-        elif not self.PHI > 0.1:
-            ret = (False, "PHI " + str(self.PHI))
+            ret = False, f"NSUB {str(self.NSUB)}"
+        elif self.U0 is not None and self.U0 <= 0:
+            ret = False, f"UO {str(self.U0)}"
+        elif self.GAMMA <= 0:
+            ret = False, f"GAMMA {str(self.GAMMA)}"
+        elif self.PHI <= 0.1:
+            ret = False, f"PHI {str(self.PHI)}"
         elif self.AVT and self.AVT < 0:
-            ret = (False, "AVT " + str(self.AVT))
+            ret = False, f"AVT {str(self.AVT)}"
         elif self.AKP and self.AKP < 0:
-            ret = (False, "AKP " + str(self.AKP))
+            ret = False, f"AKP {str(self.AKP)}"
         return ret
 
     def _device_check(self, adev):
         """Performs sanity check on the device parameters."""
-        if not adev.L > 0:
-            ret = (False, "L")
-        elif not adev.W > 0:
-            ret = (False, "W")
-        elif not adev.N > 0:
-            ret = (False, "N")
-        elif not adev.M > 0:
-            ret = (False, "M")
+        if adev.L <= 0:
+            return False, "L"
+        elif adev.W <= 0:
+            return False, "W"
+        elif adev.N <= 0:
+            return False, "N"
+        elif adev.M <= 0:
+            return False, "M"
         else:
-            ret = (True, "")
-        return ret
+            return True, ""
 
 if __name__ == '__main__':
     # Tests

@@ -157,8 +157,7 @@ class Resistor(Component):
         power = float(ports_v[0][0] ** 2 / self.value)
         arr = [
             [self.part_id.upper(), "V(n1-n2):", vn1n2, "[V]", "I(n2-n1):", in1n2, "[A]", "P:", power, "[W]"]]
-        strarr = printing.table_setup(arr)
-        return strarr
+        return printing.table_setup(arr)
 
     def print_op_info(self, ports_v):
         print self.get_op_info(ports_v)
@@ -190,8 +189,7 @@ class Capacitor(Component):
         energy = float(.5 * ports_v[0][0] ** 2 * self.value)
         arr = [
             [self.part_id.upper(), "V(n1-n2):", vn1n2, "[V]", "Q:", qn1n2, "[C]", "E:", energy, "[J]"]]
-        strarr = printing.table_setup(arr)
-        return strarr
+        return printing.table_setup(arr)
 
     def print_op_info(self, ports_v):
         print self.get_op_info(ports_v)
@@ -269,12 +267,11 @@ class ISource(Component):
     def __str__(self):
         rep = ""
         if self.dc_value is not None:
-            rep = rep + "type=idc value=" + str(self.dc_value) + " "
+            rep = f"{rep}type=idc value={str(self.dc_value)} "
         if self.abs_ac is not None:
-            rep = rep + "iac=" + \
-                str(self.abs_ac) + " " + "arg=" + str(self.arg_ac) + " "
+            rep = f"{rep}iac={str(self.abs_ac)} arg={str(self.arg_ac)} "
         if self.is_timedependent:
-            rep = rep + str(self._time_function)
+            rep += str(self._time_function)
         return rep
 
     def I(self, time=None):
@@ -284,22 +281,25 @@ class ISource(Component):
         This simulator uses Normal convention:
         A positive currents flows in a element from the + node to the - node
         """
-        if not self.is_timedependent or (self._time_function == None) or (time == None and self.dc_value is not None):
+        if (
+            not self.is_timedependent
+            or self._time_function is None
+            or time is None
+            and self.dc_value is not None
+        ):
             return self.dc_value
         else:
             return self._time_function.value(time)
 
     def print_netlist_elem_line(self, nodes_dict):
         rep = ""
-        rep += "%s %s %s " % (self.part_id, nodes_dict[self.n1],
-                             nodes_dict[self.n2])
+        rep += f"{self.part_id} {nodes_dict[self.n1]} {nodes_dict[self.n2]} "
         if self.dc_value is not None:
-            rep = rep + "type=idc value=" + str(self.dc_value) + " "
+            rep = f"{rep}type=idc value={str(self.dc_value)} "
         if self.abs_ac is not None:
-            rep = rep + "iac=" + \
-                str(self.abs_ac) + " " + "arg=" + str(self.arg_ac) + " "
+            rep = f"{rep}iac={str(self.abs_ac)} arg={str(self.arg_ac)} "
         if self.is_timedependent:
-            rep = rep + str(self._time_function)
+            rep += str(self._time_function)
         return rep
 
 
@@ -337,35 +337,34 @@ class VSource(Component):
     def __str__(self):
         rep = ""
         if self.dc_value is not None:
-            rep = rep + "type=vdc value=" + str(self.dc_value) + " "
+            rep = f"{rep}type=vdc value={str(self.dc_value)} "
         if self.abs_ac is not None:
             #   TODO:   netlist parser doesn't accept `arg=` from `self.arg_ac`
-            rep = rep + "vac=" + str(self.abs_ac) + " "
+            rep = f"{rep}vac={str(self.abs_ac)} "
         if self.is_timedependent:
-            rep = rep + str(self._time_function)
+            rep += str(self._time_function)
         return rep
 
     def V(self, time=None):
         """Returns the voltage in V at the time supplied.
         If time is not supplied, or set to None, or the source is DC, returns dc_value"""
         if not self.is_timedependent or \
-            (self._time_function is None) or \
-                (time is None and self.dc_value is not None):
+                (self._time_function is None) or \
+                    (time is None and self.dc_value is not None):
             return self.dc_value
         else:
             return self._time_function.value(time)
 
     def print_netlist_elem_line(self, nodes_dict):
         rep = ""
-        rep += "%s %s %s " % (self.part_id, nodes_dict[self.n1],
-                             nodes_dict[self.n2])
+        rep += f"{self.part_id} {nodes_dict[self.n1]} {nodes_dict[self.n2]} "
         if self.dc_value is not None:
-            rep = rep + "type=vdc value=" + str(self.dc_value) + " "
+            rep = f"{rep}type=vdc value={str(self.dc_value)} "
         if self.abs_ac is not None:
             #   TODO:   netlist parser doesn't accept `arg=` from `self.arg_ac`
-            rep = rep + "vac=" + str(self.abs_ac) + " "
+            rep = f"{rep}vac={str(self.abs_ac)} "
         if self.is_timedependent:
-            rep = rep + str(self._time_function)
+            rep += str(self._time_function)
         return rep
 
 
@@ -395,7 +394,7 @@ class EVSource(Component):
         self.sn2 = sn2
 
     def __str__(self):
-        return "alpha=%s" % self.alpha
+        return f"alpha={self.alpha}"
 
     def print_netlist_elem_line(self, nodes_dict):
         return "%s %s %s %s %s %g" % (self.part_id, nodes_dict[self.n1],
@@ -431,7 +430,7 @@ class GISource(Component):
         self.sn2 = sn2
 
     def __str__(self):
-        return "value=%s" % self.alpha
+        return f"value={self.alpha}"
 
     def print_netlist_elem_line(self, nodes_dict):
         return "%s %s %s %s %s %g" % (self.part_id, nodes_dict[self.n1],
@@ -585,8 +584,8 @@ class sin:
             return self.vo + self.va*math.sin(math.pi*self.phi/180.)
         else:
             return self.vo + self.va * math.exp((self.td - time)*self.theta) \
-                   * math.sin(2*math.pi*self.freq*(time - self.td) + \
-                              math.pi*self.phi/180.)
+                       * math.sin(2*math.pi*self.freq*(time - self.td) + \
+                                  math.pi*self.phi/180.)
 
     def __str__(self):
         return "type=sin " + \

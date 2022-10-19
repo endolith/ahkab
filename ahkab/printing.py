@@ -206,11 +206,17 @@ def table_setup(twodarray, separator='  '):
         for ci in range(len(twodarray[ri])):
             elem = str(twodarray[ri][ci])
             elem_width = len(elem)
-            if not ci + 1 % 3 == 1:
-                current_str = current_str + " " * \
-                    (col_width[ci] - elem_width) + elem + separator
-            else:
-                current_str = current_str + elem + " " * \
-                    (col_width[ci] - elem_width) + separator
+            current_str = (
+                current_str
+                + elem
+                + " " * (col_width[ci] - elem_width)
+                + separator
+                if ci + 1 % 3 == 1
+                else current_str
+                + " " * (col_width[ci] - elem_width)
+                + elem
+                + separator
+            )
+
         table_string += current_str + "\n"
     return table_string

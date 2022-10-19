@@ -214,10 +214,14 @@ def convergence_check(dx, x, nv_indices, ni_indices, vector_norm):
         raise OverflowError
     dxc = numpy.array(dx)
     xc = numpy.array(x)
-    ret = (vector_norm(dxc[nv_indices]) < options.ver * vector_norm(xc[nv_indices]) + options.vea) and \
-          (not len(ni_indices) or \
-           vector_norm(dxc[ni_indices]) < options.ier * vector_norm(xc[ni_indices]) + options.iea)
-    return ret
+    return (
+        vector_norm(dxc[nv_indices])
+        < options.ver * vector_norm(xc[nv_indices]) + options.vea
+    ) and (
+        not len(ni_indices)
+        or vector_norm(dxc[ni_indices])
+        < options.ier * vector_norm(xc[ni_indices]) + options.iea
+    )
 
 
 def set_submatrix(row, col, dest_matrix, source_matrix):
@@ -295,13 +299,12 @@ def build_CMAT(mna, D, step, points, tick, n_of_var=None, verbose=3):
                     temp = -1.0 * I
                 else:
                     continue  # temp = Z
+            elif ci == li:
+                temp = M
+            elif ci == li - 1:
+                temp = N
             else:
-                if ci == li:
-                    temp = M
-                elif ci == li - 1:
-                    temp = N
-                else:
-                    continue  # temp = Z
+                continue  # temp = Z
             CMAT = set_submatrix(
                 row=li * n_of_var, col=ci * n_of_var, dest_matrix=CMAT, source_matrix=temp)
         tick.step(verbose > 2)
@@ -362,11 +365,13 @@ def build_Tt(circ, points, step, tick, n_of_var, verbose=3):
         v_eq = 0
         time = index * step
         for elem in circ:
-            if (isinstance(elem, devices.VSource) or isinstance(elem, devices.ISource)) and elem.is_timedependent:
+            if (
+                isinstance(elem, (devices.VSource, devices.ISource))
+            ) and elem.is_timedependent:
                 if isinstance(elem, devices.VSource):
                     Tt[index * n_of_var + nv - 1 + v_eq, 0] = - \
                         1.0 * elem.V(time)
-                elif isinstance(elem, devices.ISource):
+                else:
                     if elem.n1:
                         Tt[index * n_of_var + elem.n1 - 1, 0] = \
                             Tt[index * n_of_var + elem.n1 - 1, 0] + \
@@ -377,7 +382,7 @@ def build_Tt(circ, points, step, tick, n_of_var, verbose=3):
                                 elem.I(time)
             if circuit.is_elem_voltage_defined(elem):
                 v_eq = v_eq + 1
-            # print Tt[index*n_of_var:(index+1)*n_of_var]
+                    # print Tt[index*n_of_var:(index+1)*n_of_var]
         tick.step(verbose > 2)
     tick.hide(verbose > 2)
     printing.print_info_line(("done.", 5), verbose)

@@ -63,12 +63,23 @@ def remove_row_and_col(matrix, rrow=0, rcol=0):
     eg. matrix is 3x3, you want to remove just the second row of matrix, supply:
     rrow=1 and rcol=10 (or any number bigger than 2)
     """
-    if rrow < 0 or rcol < 0:
-        return_matrix = None
-    else:
-        return_matrix = numpy.vstack(
-            (numpy.hstack((matrix[0:rrow, 0:rcol], matrix[0:rrow, rcol + 1:])), numpy.hstack((matrix[rrow + 1:, 0:rcol], matrix[rrow + 1:, rcol + 1:]))))
-    return return_matrix
+    return (
+        None
+        if rrow < 0 or rcol < 0
+        else numpy.vstack(
+            (
+                numpy.hstack(
+                    (matrix[0:rrow, 0:rcol], matrix[0:rrow, rcol + 1 :])
+                ),
+                numpy.hstack(
+                    (
+                        matrix[rrow + 1 :, 0:rcol],
+                        matrix[rrow + 1 :, rcol + 1 :],
+                    )
+                ),
+            )
+        )
+    )
 
 
 def remove_row(matrix, rrow=0):
@@ -76,11 +87,11 @@ def remove_row(matrix, rrow=0):
     rrow is the index of the row to be removed.
 
     Returns: the matrix without the row, or none if rrow is invalid."""
-    if rrow < 0 or rrow > matrix.shape[0] - 1:
-        return_matrix = None
-    else:
-        return_matrix = numpy.vstack((matrix[:rrow, :], matrix[rrow + 1:, :]))
-    return return_matrix
+    return (
+        None
+        if rrow < 0 or rrow > matrix.shape[0] - 1
+        else numpy.vstack((matrix[:rrow, :], matrix[rrow + 1 :, :]))
+    )
 
 
 def check_file(filename):
@@ -91,30 +102,27 @@ def check_file(filename):
     """
     filename = os.path.abspath(filename)
     if not os.path.exists(filename):
-        printing.print_general_error(filename + " not found.")
-        ret = False
+        printing.print_general_error(f"{filename} not found.")
+        return False
     elif not os.path.isfile(filename):
-        printing.print_general_error(filename + " is not a file.")
-        ret = False
+        printing.print_general_error(f"{filename} is not a file.")
+        return False
     else:
-        ret = True
-    return ret
+        return True
 
 # Use scipy.factorial
 
 
 def fact(num):
     """Returns: num!"""
-    if num == 1:
-        return 1
-    return reduce(operator.mul, xrange(2, num + 1))
+    return 1 if num == 1 else reduce(operator.mul, xrange(2, num + 1))
 
 
 def calc_eps():
     """Returns the machine precision."""
     _eps = 1.0
-    while(1 + _eps > 1):
-        _eps = _eps / 2
+    while _eps > 0:
+        _eps /= 2
     return _eps * 2
 
 
@@ -150,19 +158,18 @@ class combinations:
         """
         # It's recursive
         if self.k > 1:
-            if self._sub_iter == None:
+            if self._sub_iter is None:
                 self._sub_iter = combinations(self.L[self._i + 1:], self.k - 1)
             try:
                 nxt = self._sub_iter.next()
                 cur = self.L[self._i]
             except StopIteration:
-                if self._i < len(self.L) - self.k:
-                    self._i = self._i + 1
-                    self._sub_iter = combinations(
-                        self.L[self._i + 1:], self.k - 1)
-                    return self.next()
-                else:
+                if self._i >= len(self.L) - self.k:
                     raise StopIteration
+                self._i = self._i + 1
+                self._sub_iter = combinations(
+                    self.L[self._i + 1:], self.k - 1)
+                return self.next()
         else:
             nxt = []
             if self._i < len(self.L):
@@ -190,24 +197,21 @@ class log_axis_iterator:
     def next(self):
         """Iterator method: get the next value
         """
-        if self.index < self.nsteps:
-            self.current = self.current * self.inc
-            ret = self.current
-        else:
+        if self.index >= self.nsteps:
             raise StopIteration
+        self.current = self.current * self.inc
         self.index = self.index + 1
-        return ret
+        return self.current
 
     def __getitem__(self, i):
         """Iterator method: get a particular value (n. i)
         """
         if i == 0:
-            ret = self.min
+            return self.min
         elif i < self.nsteps:
-            ret = self.min * self.inc ** i
+            return self.min * self.inc ** i
         else:
-            ret = None
-        return ret
+            return None
 
     def __iter__(self):
         """Required iterator method.
@@ -237,18 +241,13 @@ class lin_axis_iterator:
             self.current = self.current + self.inc
         else:
             raise StopIteration
-        ret = self.current
         self.index = self.index + 1
-        return ret
+        return self.current
 
     def __getitem__(self, i):
         """Iterator method: get a particular value (n. i)
         """
-        if i < self.nsteps:
-            ret = self.min + self.inc * i
-        else:
-            ret = None
-        return ret
+        return self.min + self.inc * i if i < self.nsteps else None
 
     def __iter__(self):
         """Required iterator method.
@@ -303,7 +302,7 @@ def custom_convergence_check(x, dx, residuum, er, ea, eresiduum, vector_norm=lam
                 if not all_check_results[-1]:
                     break
 
-            ret = not (False in all_check_results)
+            ret = False not in all_check_results
     else:
         # We get here when there's no variable to be checked. This is because there aren't variables
         # of this type.
