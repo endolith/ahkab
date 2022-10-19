@@ -165,16 +165,16 @@ class op_solution(solution, _mutable_data):
         # We have mixed current and voltage results
         # per primi vengono tanti valori di tensioni quanti sono i nodi del circuito meno 
         # uno, quindi tante correnti quanti sono gli elementi definiti in tensione presenti
-        # (per questo, per misurare una corrente, si può fare uso di generatori di tensione 
+        # (per questo, per misurare una corrente, si puÃ² fare uso di generatori di tensione 
         # da 0V)
-    
+
         nv_1 = len(circ.nodes_dict) - 1 # numero di soluzioni di tensione (al netto del ref)
         self.results = case_insensitive_dict()
         self.errors = case_insensitive_dict()
         self.x = x
-    
+
         for index in range(nv_1):
-            varname = ("V" + str(circ.nodes_dict[index + 1])).upper()
+            varname = f"V{str(circ.nodes_dict[index + 1])}".upper()
             self.variables += [varname]
             self.results.update({varname: x[index, 0]})
             self.errors.update({varname: error[index, 0]})
@@ -185,7 +185,7 @@ class op_solution(solution, _mutable_data):
         for elem in circ:
             if circuit.is_elem_voltage_defined(elem):
                 index = index + 1
-                varname = ("I("+elem.part_id.upper()+")").upper()
+                varname = f"I({elem.part_id.upper()})".upper()
                 self.variables += [varname]
                 self.results.update({varname: x[index, 0]})
                 self.errors.update({varname: error[index, 0]})
@@ -206,7 +206,7 @@ class op_solution(solution, _mutable_data):
 
     def __getitem__(self, name):
         """Get a specific variable, as from a dictionary."""
-        if not name.lower() in map(str.lower, self.variables):
+        if name.lower() not in map(str.lower, self.variables):
             raise KeyError
         his = csvlib.get_headers_index(self.variables, [name], verbose=0)
         return self.x[his]
@@ -233,7 +233,7 @@ class op_solution(solution, _mutable_data):
             else:
                 relerror = 0.0
             line = (v, self.results[v], self.units[v],\
-                "(% .2g %s, %.0f %%)" % (self.errors[v], 
+                    "(% .2g %s, %.0f %%)" % (self.errors[v], 
                 self.units[v], relerror))
             line = map(str, line)
             table.append(line)
@@ -282,8 +282,7 @@ class op_solution(solution, _mutable_data):
                 v = v + x[elem.n1-1] if elem.n1 != 0 else v
                 v = v - x[elem.n2-1] if elem.n2 != 0 else v
                 tot_power = tot_power - v*elem.I()
-            elif isinstance(elem, devices.VSource) or \
-                 isinstance(elem, devices.EVSource):
+            elif isinstance(elem, (devices.VSource, devices.EVSource)):
                 v = 0
                 v = v + x[elem.n1-1] if elem.n1 != 0 else v
                 v = v - x[elem.n2-1] if elem.n2 != 0 else v
@@ -296,22 +295,19 @@ class op_solution(solution, _mutable_data):
         return op_info
 
     def write_to_file(self, filename=None):
-        if filename is None and self.filename is None:
-            # maybe warn the user here?
-            return
         if filename is None:
+            if self.filename is None:
+                # maybe warn the user here?
+                return
             filename = self.filename
-        if filename != 'stdout':
-            fp = open(filename+"info", "w")
-        else:
-            fp = sys.stdout
+        fp = open(f"{filename}info", "w") if filename != 'stdout' else sys.stdout
         fp.write(self.timestamp+"\n")
-        fp.write("ahkab v. "+VERSION+u" (c) 2006-2013 Giuseppe Venturini\n\n")
+        fp.write(f"ahkab v. {VERSION}" + u" (c) 2006-2013 Giuseppe Venturini\n\n")
         fp.write("Operating Point (OP) analysis\n\n")
         fp.write("Netlist: %s\nTitle: %s\n" % (self.netlist_file, self.netlist_title))
         fp.write("At %.2f K\n" % (self.temp,))
         fp.write("Options:\n\tvea = %e\n\tver = %f\n\tiea = %e\n\tier = %f\n\tgmin = %e\n" \
-                 % (self.vea, self.ver, self.iea, self.ier, self.gmin))
+                     % (self.vea, self.ver, self.iea, self.ier, self.gmin))
         fp.write("\nConvergence reached in %d iterations.\n" % (self.iterations,))
         fp.write("\nResults:\n")
         vtable = self.get_table_array()
@@ -326,11 +322,12 @@ class op_solution(solution, _mutable_data):
         self._add_data(self.x)
 
     def print_short(self):
+        str_repr = "".join(
+            "%s: %e %s,\t" % (v, self.results[v], self.units[v])
+            for v in self.variables
+        )
+
         str_repr = ""
-        for v in self.variables:
-            str_repr += "%s: %e %s,\t" % \
-                (v, self.results[v], self.units[v])
-        print str_repr[:-2]
 
     @staticmethod
     def gmin_check(op2, op1):
@@ -366,9 +363,7 @@ class op_solution(solution, _mutable_data):
         return self.x
 
     def items(self, verbose=3):
-        vlist = []
-        for j in range(self.x.shape[0]):
-            vlist.append(self.x[j])
+        vlist = [self.x[j] for j in range(self.x.shape[0])]
         return zip(self.variables, vlist)
 
     # iterator methods
@@ -399,14 +394,14 @@ class ac_solution(solution, _mutable_data):
         self.linearization_op = op
         self.stype = stype
         self.ostart, self.ostop, self.opoints = ostart, ostop, opoints
-    
+
         nv_1 = len(circ.nodes_dict) - 1 # numero di soluzioni di tensione (al netto del ref)
         self.variables += ["w"]
         self.units.update({"w": "rad/s"})
-    
+
         for index in range(nv_1):
-            varname_abs = "|V%s|" % (str(circ.nodes_dict[index + 1]),)
-            varname_arg = "arg(V%s)" % (str(circ.nodes_dict[index + 1]),)
+            varname_abs = f"|V{str(circ.nodes_dict[index + 1])}|"
+            varname_arg = f"arg(V{str(circ.nodes_dict[index + 1])})"
             self.variables += [varname_abs]
             self.variables += [varname_arg]
             self.units.update({varname_abs: "V"})
@@ -416,8 +411,8 @@ class ac_solution(solution, _mutable_data):
 
         for elem in circ: 
             if circuit.is_elem_voltage_defined(elem):
-                varname_abs = "|I(%s)|" % (elem.part_id.upper(),)
-                varname_arg = "arg(I(%s))" % (elem.part_id.upper(),)
+                varname_abs = f"|I({elem.part_id.upper()})|"
+                varname_arg = f"arg(I({elem.part_id.upper()}))"
                 self.variables += [varname_abs]
                 self.variables += [varname_arg]
                 self.units.update({varname_abs: "A"})
@@ -462,17 +457,17 @@ class dc_solution(solution, _mutable_data):
         solution.__init__(self, circ, outfile)
         self.start, self.stop = start, stop
         self.stype = stype
-    
+
         nv_1 = len(circ.nodes_dict) - 1 # numero di soluzioni di tensione (al netto del ref)
         self.variables = [sweepvar]
-        self.units = case_insensitive_dict()        
+        self.units = case_insensitive_dict()
         if self.variables[0][0] == 'V':
             self.units.update({self.variables[0]:'V'})
         if self.variables[0][0] == 'I':
             self.units.update({self.variables[0]:'A'})
-    
+
         for index in range(nv_1):
-            varname = "V%s" % (str(circ.nodes_dict[index + 1]),)
+            varname = f"V{str(circ.nodes_dict[index + 1])}"
             self.variables += [varname]
             self.units.update({varname:"V"})
             if circ.is_int_node_internal_only(index+1):
@@ -480,7 +475,7 @@ class dc_solution(solution, _mutable_data):
 
         for elem in circ: 
             if circuit.is_elem_voltage_defined(elem):
-                varname = "I(%s)" % (elem.part_id.upper(),)
+                varname = f"I({elem.part_id.upper()})"
                 self.variables += [varname]
                 self.units.update({varname:"A"})
 
@@ -527,13 +522,13 @@ class tran_solution(solution, _mutable_data):
         self.method = method
 
         self._lock = False
-    
+
         nv_1 = len(circ.nodes_dict) - 1 # numero di soluzioni di tensione (al netto del ref)
         self.variables = ["T"]
         self.units.update({"T":"s"})
-    
+
         for index in range(nv_1):
-            varname = ("V%s" % (str(circ.nodes_dict[index + 1]),)).upper()
+            varname = f"V{str(circ.nodes_dict[index + 1])}".upper()
             self.variables += [varname]
             self.units.update({varname:"V"})
             if circ.is_int_node_internal_only(index+1):
@@ -541,7 +536,7 @@ class tran_solution(solution, _mutable_data):
 
         for elem in circ: 
             if circuit.is_elem_voltage_defined(elem):
-                varname = ("I(%s)" % (elem.part_id.upper(),)).upper()
+                varname = f"I({elem.part_id.upper()})".upper()
                 self.variables += [varname]
                 self.units.update({varname:"A"})
 
@@ -596,9 +591,9 @@ class pss_solution(solution, _mutable_data):
         nv_1 = len(circ.nodes_dict) - 1 # numero di soluzioni di tensione (al netto del ref)
         self.variables = ["T"]
         self.units.update({"T":"s"})
-    
+
         for index in range(nv_1):
-            varname = "V%s" % (str(circ.nodes_dict[index + 1]),)
+            varname = f"V{str(circ.nodes_dict[index + 1])}"
             self.variables += [varname]
             self.units.update({varname:"V"})
             if circ.is_int_node_internal_only(index+1):
@@ -606,7 +601,7 @@ class pss_solution(solution, _mutable_data):
 
         for elem in circ: 
             if circuit.is_elem_voltage_defined(elem):
-                varname = "I(%s)" % (elem.part_id.upper(),)
+                varname = f"I({elem.part_id.upper()})"
                 self.variables += [varname]
                 self.units.update({varname:"A"})
 
@@ -659,13 +654,13 @@ class symbolic_solution():
         self.results = case_insensitive_dict()
         for symbol, result in results_dict.iteritems():
             self.results.update({str(symbol):result})
-        
+
         self._symbols = results_dict.keys() # keep them, they're useful
         for expr in results_dict.values():
             if tf:
                 expr = expr['gain']
             for symb in expr.atoms():
-                if symb.is_Symbol and not symb in self._symbols:
+                if symb.is_Symbol and symb not in self._symbols:
                     self._symbols.append(symb)
         self.filename = outfile if outfile != 'stdout' else None
         if self.filename is not None:
@@ -674,7 +669,7 @@ class symbolic_solution():
     def as_symbol(self, variable):
         symbs = filter(lambda x: x.name.lower() == variable.lower(), self._symbols)
         if len(symbs) == 0:
-            raise ValueError, "No symbol %s in the results set."%(variable,)
+            raise (ValueError, f"No symbol {variable} in the results set.")
         else:
             return symbs[0]
             
@@ -700,7 +695,7 @@ class symbolic_solution():
 
     def __str__(self):
         str_repr = "Symbolic %s results for %s (netlist %s).\nRun on %s.\n" % \
-                   ('simulation'*(not self.tf) + 'transfer function'*self.tf, 
+                       ('simulation'*(not self.tf) + 'transfer function'*self.tf, 
                     self.netlist_title, self.netlist_file, self.timestamp)
         keys = self.results.keys()
         keys.sort(lambda x, y: cmp(str(x), str(y))) 
@@ -710,11 +705,11 @@ class symbolic_solution():
         else:
             for key in keys:
                 str_repr +=  str(key) + ":\n\t%s:\t%s\n" % \
-                             ('gain', self.results[key]['gain'])
+                                 ('gain', self.results[key]['gain'])
                 if self.results[key]['gain'] == self.results[key]['gain0']:
                     continue
                 str_repr +=  "\t%s:\t%s\n" % \
-                             ('gain0', self.results[key]['gain0'])
+                                 ('gain0', self.results[key]['gain0'])
                 for sing in ('poles', 'zeros'):
                     if not len(self.results[key][sing]):
                         continue
@@ -789,11 +784,8 @@ class case_insensitive_dict():
         rpr = "{"
         keys = self._dict.keys()
         for i in range(len(keys)):
-            rpr += "%s: %s" % (keys[i], self._dict[keys[i]])
-            if i < len(keys) - 1:
-                rpr += ", "
-            else:
-                rpr += "}"
+            rpr += f"{keys[i]}: {self._dict[keys[i]]}"
+            rpr += ", " if i < len(keys) - 1 else "}"
         return rpr
 
     def __getitem__(self, name):

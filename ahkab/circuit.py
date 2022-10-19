@@ -124,10 +124,7 @@ class Circuit(list):
         try:
             self.nodes_dict.values().index(name)
         except ValueError:
-            if name == '0':
-                int_node = 0
-            else:
-                int_node = len(self.nodes_dict) + 1 * (not got_ref)
+            int_node = 0 if name == '0' else len(self.nodes_dict) + 1 * (not got_ref)
             self.nodes_dict.update({int_node: name})
         else:
             raise ValueError
@@ -160,10 +157,7 @@ class Circuit(list):
         try:
             self.nodes_dict.values().index(ext_name)
         except ValueError:
-            if ext_name == '0':
-                int_node = 0
-            else:
-                int_node = len(self.nodes_dict) + 1 * (not got_ref)
+            int_node = 0 if ext_name == '0' else len(self.nodes_dict) + 1 * (not got_ref)
             self.nodes_dict.update({int_node: ext_name})
         else:
             for (key, value) in self.nodes_dict.iteritems():
@@ -178,7 +172,7 @@ class Circuit(list):
         Returns: the ext_node that should be used
         """
 
-        ext_node = "INT" + str(self.internal_nodes)
+        ext_node = f"INT{str(self.internal_nodes)}"
         self.internal_nodes = self.internal_nodes + 1
         return ext_node
 
@@ -192,10 +186,7 @@ class Circuit(list):
     def is_nonlinear(self):
         """Returns True if at least a element in the circuit is NL.
         """
-        for elem in self:
-            if elem.is_nonlinear:
-                return True
-        return False
+        return any(elem.is_nonlinear for elem in self)
 
     def get_locked_nodes(self):
         """Returns: a list containing all nodes connected to non-linear elements.
@@ -209,8 +200,7 @@ class Circuit(list):
             oports = elem.get_output_ports()
             for index in range(len(oports)):
                 ports = elem.get_drive_ports(index)
-                for port in ports:
-                    locked_nodes.append(port)
+                locked_nodes.extend(iter(ports))
         return locked_nodes
 
     def ext_node_to_int(self, ext_node):
@@ -233,7 +223,7 @@ class Circuit(list):
         try:
             index = values.index(ext_node)
         except ValueError:
-            raise NodeNotFoundError, "Node %s not found in the circuit." % ext_node
+            raise (NodeNotFoundError, f"Node {ext_node} not found in the circuit.")
 
         return items[index][0]
 
@@ -269,10 +259,7 @@ class Circuit(list):
         return '0'
 
     def get_elem_by_name(self, name):
-        for e in self:
-            if e.part_id.lower() == name.lower():
-                return e
-        return None
+        return next((e for e in self if e.part_id.lower() == name.lower()), None)
 
     def add_model(self, model_type, model_label, model_parameters):
         """Add a model to the available models
@@ -299,7 +286,7 @@ class Circuit(list):
             model_iter = switch.vswitch_model(**model_parameters)
             model_iter.name = model_label
         else:
-            raise CircuitError, "Unknown model type %s" % (model_type,)
+            raise (CircuitError, f"Unknown model type {model_type}")
         self.models.update({model_label: model_iter})
         return self.models
 
@@ -404,8 +391,8 @@ class Circuit(list):
                 L2elem = e
 
         if L1elem is None or L2elem is None:
-            error_msg = "One or more coupled inductors for %s were not found: %s (found: %s), %s (found: %s)." % \
-                (name, L1, L1elem is not None, L2, L2elem is not None)
+            error_msg = f"One or more coupled inductors for {name} were not found: {L1} (found: {L1elem is not None}), {L2} (found: {L2elem is not None})."
+
             printing.print_general_error(error_msg)
             printing.print_general_error("Quitting.")
             sys.exit(30)
@@ -496,7 +483,7 @@ class Circuit(list):
         if models is None:
             models = self.models
         if not models.has_key(model_label):
-            raise ModelError, "Unknown diode model id: " + model_label
+            raise (ModelError, f"Unknown diode model id: {model_label}")
 
         elem = diode.diode(part_id=part_id, n1=n1, n2=n2, model=models[
                            model_label], AREA=Area, T=T, ic=ic, off=off)
@@ -538,7 +525,7 @@ class Circuit(list):
             models = self.models
 
         if not models.has_key(model_label):
-            raise ModelError, "Unknown model id: " + model_label
+            raise (ModelError, f"Unknown model id: {model_label}")
 
         if isinstance(models[model_label], ekv.ekv_mos_model):
             elem = ekv.ekv_device(
@@ -549,7 +536,7 @@ class Circuit(list):
                 nd, ng, ns, nb, w, l, models[model_label], m, n, part_id)
 
         else:
-            raise Exception, "Unknown model type for " + model_label
+            raise (Exception, f"Unknown model type for {model_label}")
 
         self.append(elem)
 
@@ -650,7 +637,7 @@ class Circuit(list):
         if models is None:
             models = self.models
         if not models.has_key(model_label):
-            raise ModelError, "Unknown switch model id: " + model_label
+            raise (ModelError, f"Unknown switch model id: {model_label}")
 
         elem = switch.switch_device(
             part_id=part_id, n1=n1, n2=n2, sn1=sn1, sn2=sn2, model=models[model_label])
@@ -679,13 +666,16 @@ class Circuit(list):
         param_dict.update({"circuit_node": self.add_node})
 
         elem = elem_class(**param_dict)
-        elem.part_id = "y%s" % name[1:]
+        elem.part_id = f"y{name[1:]}"
 
         if hasattr(elem, "check"):
             selfcheck_result, error_msg = elem.check()
             if not selfcheck_result:
-                raise NetlistParseError, "module: " + module_name + " elem type: " + elem_type_name + " error: " +\
-                    error_msg
+                raise (
+                    NetlistParseError,
+                    f"module: {module_name} elem type: {elem_type_name} error: {error_msg}",
+                )
+
 
         self.append(elem)
         return True
@@ -698,27 +688,27 @@ class Circuit(list):
 
         Returns: True if the element was found and removed, False otherwise
         """
-        if not elem in self:
+        if elem not in self:
             return False
 
         self.remove(elem)
         nodes = []
         if hasattr(elem, n1) and elem.n1 != 0:
-            nodes = nodes + [n1]
-        if hasattr(elem, n2) and elem.n2 != 0 and not elem.n2 in nodes:
-            nodes = nodes + [n2]
+            nodes += [n1]
+        if hasattr(elem, n2) and elem.n2 != 0 and elem.n2 not in nodes:
+            nodes += [n2]
         if elem.is_nonlinear:
             for n1, n2 in elem.ports:
-                if n1 != 0 and not n1 in nodes:
+                if n1 != 0 and n1 not in nodes:
                     nodes = nodes + [n1]
-                if n2 != 0 and not n2 in nodes:
+                if n2 != 0 and n2 not in nodes:
                     nodes = nodes + [n2]
 
         remove_list = copy.copy(nodes)
         for n in nodes:
             for e in self:
                 if hasattr(elem, n1) and e.n1 == n or\
-                        hasattr(elem, n2) and e.n2 == n:
+                            hasattr(elem, n2) and e.n2 == n:
                     remove_list.remove(n)
                     break
                 if elem.is_nonlinear:
@@ -752,7 +742,9 @@ class Circuit(list):
 
         if not found:
             printing.print_warning(
-                "find_vde_index(): element %s was not found. This is a bug." % (id_wdescr,))
+                f"find_vde_index(): element {id_wdescr} was not found. This is a bug."
+            )
+
         else:
             printing.print_info_line(
                 ("%s found at index %d" % (id_wdescr, vde_index), 6), verbose)
@@ -780,11 +772,7 @@ class Circuit(list):
                     ni = ni + 1
                 if found:
                     break
-        if found:
-            ret = e
-        else:
-            ret = None
-        return ret
+        return e if found else None
 
 
 # STATIC METHODS
@@ -793,12 +781,18 @@ def is_elem_voltage_defined(elem):
     True se the elem is a vsource, inductor, evsource or hvsource
     False otherwise.
     """
-    if isinstance(elem, devices.VSource) or isinstance(elem, devices.EVSource) or \
-        isinstance(elem, devices.HVSource) or isinstance(elem, devices.Inductor) \
-            or (hasattr(elem, "is_voltage_defined") and elem.is_voltage_defined):
-        return True
-    else:
-        return False
+    return bool(
+        isinstance(
+            elem,
+            (
+                devices.VSource,
+                devices.EVSource,
+                devices.HVSource,
+                devices.Inductor,
+            ),
+        )
+        or (hasattr(elem, "is_voltage_defined") and elem.is_voltage_defined)
+    )
 
 
 class NodeNotFoundError(Exception):
@@ -853,10 +847,10 @@ class circuit_wrapper:
 
     def __init__(self, circ, connection_nodes_dict, subckt_name, subckt_label):
         self.circ = circ
-        self.prefix = subckt_label + "-" + subckt_name + "-"
+        self.prefix = f"{subckt_label}-{subckt_name}-"
         self.subckt_node_filter_dict = {}
-        self.subckt_node_filter_dict.update(connection_nodes_dict)
-        self.subckt_node_filter_dict.update({'0': '0'})
+        self.subckt_node_filter_dict |= connection_nodes_dict
+        self.subckt_node_filter_dict['0'] = '0'
 
     def add_node(self, ext_name):
         """We want to perform the following conversions:
@@ -869,5 +863,4 @@ class circuit_wrapper:
         if not self.subckt_node_filter_dict.has_key(ext_name):
             self.subckt_node_filter_dict.update(
                 {ext_name: self.prefix + ext_name})
-        int_node = self.circ.add_node(self.subckt_node_filter_dict[ext_name])
-        return int_node
+        return self.circ.add_node(self.subckt_node_filter_dict[ext_name])

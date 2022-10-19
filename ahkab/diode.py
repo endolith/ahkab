@@ -81,7 +81,7 @@ class diode:
         rep = "%s area=%g T=%g" % (
             self.model.name, self.device.AREA, self.device.T)
         if self.ic is not None:
-            rep = rep + " ic=" + str(self.ic)
+            rep = f"{rep} ic={str(self.ic)}"
         elif self.off:
             rep += " off"
         return rep
@@ -94,8 +94,7 @@ class diode:
 
     def i(self, op_index, ports_v, time=0):  # with gmin added
         v = ports_v[0]
-        i = self.model.get_i(op_index, ports_v, self.device)
-        return i
+        return self.model.get_i(op_index, ports_v, self.device)
 
     def g(self, op_index, ports_v, port_index, time=0):
         if not port_index == 0:
@@ -109,8 +108,7 @@ class diode:
         info = ["V(n1-n2): ", vn1n2, "[V]", "I(n1-n2):", idiode, "[A]", "P:",
                 vn1n2 * idiode, "g:", gmdiode, "[A/V]", "T:", self._get_T(), "K"]
         arr = [[self.part_id.upper()] + info]
-        strarr = printing.table_setup(arr)
-        return strarr
+        return printing.table_setup(arr)
 
     def print_op_info(self, ports_v):
         print self.get_op_info(ports_v),
@@ -214,9 +212,9 @@ class diode_model:
         return math.exp(x) if x < 70 else math.exp(70) + 10 * x
 
     def _get_i(self, v):
-        i = self.IS * (self._safe_exp(v / (self.N * self.VT)) - 1) \
-            + self.ISR * (self._safe_exp(v / (self.NR * self.VT)) - 1)
-        return i
+        return self.IS * (
+            self._safe_exp(v / (self.N * self.VT)) - 1
+        ) + self.ISR * (self._safe_exp(v / (self.NR * self.VT)) - 1)
 
     def get_gm(self, op_index, ports_v, port_index, dev, rs=True):
         if dev.T != self.T:

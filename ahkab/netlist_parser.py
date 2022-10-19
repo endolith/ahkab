@@ -23,6 +23,7 @@ The syntax is explained in the docs and it's based on [1] whenever possible.
 Ref. [1] http://newton.ex.ac.uk/teaching/CDHW/Electronics2/userguide/
 """
 
+
 import sys
 import imp
 import math
@@ -48,7 +49,7 @@ from .pss import specs as pss_spec
 from .symbolic import specs as symbolic_spec
 specs = {}
 for i in dc_spec, ac_spec, tran_spec, pss_spec, symbolic_spec:
-    specs.update(i)
+    specs |= i
 
 
 def parse_circuit(filename, read_netlist_from_stdin=False):
@@ -233,8 +234,15 @@ def parse_models(models_lines):
     for line, line_n in models_lines:
         tokens = line.replace("(", "").replace(")", "").split()
         if len(tokens) < 3:
-            raise NetlistParseError, (
-                "Syntax error in model declaration on line " + str(line_n) + ".\n\t" + line,)
+            raise (
+                NetlistParseError,
+                (
+                    f"Syntax error in model declaration on line {str(line_n)}"
+                    + ".\n\t"
+                    + line,
+                ),
+            )
+
         model_label = tokens[2]
         model_type = tokens[1]
         model_parameters = {}
@@ -242,26 +250,30 @@ def parse_models(models_lines):
             if tokens[index][0] == "*":
                 break
             (label, value) = parse_param_value_from_string(tokens[index])
-            model_parameters.update({label.upper(): value})
+            model_parameters[label.upper()] = value
         if model_type == "ekv":
             model_iter = ekv.ekv_mos_model(**model_parameters)
             model_iter.name = model_label
         elif model_type == "mosq":
             model_iter = mosq.mosq_mos_model(**model_parameters)
             model_iter.name = model_label
-        elif model_type == "diode" or model_type == 'd':
-            model_parameters.update({'name': model_label})
+        elif model_type in ["diode", 'd']:
+            model_parameters['name'] = model_label
             model_iter = diode.diode_model(**model_parameters)
         elif model_type == "sw":
-            model_parameters.update({'name': model_label})
+            model_parameters['name'] = model_label
             model_iter = switch.vswitch_model(**model_parameters)
-        # elif model_type == "csw":
-        #   model_parameters.update({'name':model_label})
-        #   model_iter = switch.iswitch_model(**model_parameters)
         else:
-            raise NetlistParseError, (
-                "Unknown model (" + model_type + ") on line " + str(line_n) + ".\n\t" + line,)
-        models.update({model_label: model_iter})
+            raise (
+                NetlistParseError,
+                (
+                    f"Unknown model ({model_type}) on line {str(line_n)}"
+                    + ".\n\t"
+                    + line,
+                ),
+            )
+
+        models[model_label] = model_iter
     return models
 
 

@@ -90,7 +90,7 @@ if __name__ == "__main__":
     import time
     tk = ticker()
     tk.display()
-    for i in range(100000):
+    for _ in range(100000):
         time.sleep(0.0001)
         tk.step()
     tk.hide()

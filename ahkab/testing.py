@@ -43,7 +43,7 @@ class NetlistTest(unittest.TestCase):
         self.test_id = test_id
         self.er = er
         self.ea = ea
-        self.test.__func__.__doc__ = "%s simulation" % (test_id, )
+        self.test.__func__.__doc__ = f"{test_id} simulation"
         self.ref_data = {} # the reference results will be loaded here
 
     def setUp(self):
@@ -135,25 +135,35 @@ class NetlistTest(unittest.TestCase):
         if hasattr(res, 'get_x'):
             x = res.get_x()
             for k in res.keys():
-                if res[k] is x:
-                    continue
-                else:
+                if res[k] is not x:
                     # Interpolate the results to compare.
                     d1 = InterpolatedUnivariateSpline(x.reshape((-1, )), res[k].reshape((-1, )))
                     d2 = InterpolatedUnivariateSpline(ref[ref.x].reshape((-1, )), ref[k].reshape((-1, )))
-                    ok_(np.allclose(d1(x.reshape((-1, ))), d2(x.reshape((-1, ))), rtol=self.er, atol=self.ea), "Test %s FAILED" % self.test_id)
+                    ok_(
+                        np.allclose(
+                            d1(x.reshape((-1,))),
+                            d2(x.reshape((-1,))),
+                            rtol=self.er,
+                            atol=self.ea,
+                        ),
+                        f"Test {self.test_id} FAILED",
+                    )
+
         elif isinstance(res, results.op_solution):
             for k in res.keys():
                 assert k in ref
-                ok_(np.allclose(res[k], ref[k], rtol=self.er, atol=self.ea), "Test %s FAILED" % self.test_id)
-        else:
-            if isinstance(res, list) or isinstance(res, tuple):
-                for i, j in zip(res, ref):
-                    self._check(i, j)
-            elif res is not None:
-                for k in res.keys():
-                    assert k in ref
-                    assert res[k] == ref[k]
+                ok_(
+                    np.allclose(res[k], ref[k], rtol=self.er, atol=self.ea),
+                    f"Test {self.test_id} FAILED",
+                )
+
+        elif isinstance(res, (list, tuple)):
+            for i, j in zip(res, ref):
+                self._check(i, j)
+        elif res is not None:
+            for k in res.keys():
+                assert k in ref
+                assert res[k] == ref[k]
 
     def test(self):
         res = self._run_test()
@@ -175,9 +185,7 @@ class NetlistTest(unittest.TestCase):
                     os.rename(res_file, ref_file)
 
     def tearDown(self):
-        if self.ref_run:
-            pass
-        else:
+        if not self.ref_run:
             for f in self.rmfiles:
                 os.remove(f)
 
@@ -212,7 +220,7 @@ class APITest(unittest.TestCase):
         self.test_id = test_id
         self.er = er
         self.ea = ea
-        self.test.__func__.__doc__ = "%s simulation" % (test_id, )
+        self.test.__func__.__doc__ = f"{test_id} simulation"
         self.ref_data = {} # the reference results will be loaded here
         self.skip = skip_on_travis
         self.circ = circ
@@ -299,25 +307,35 @@ class APITest(unittest.TestCase):
         if hasattr(res, 'get_x'):
             x = res.get_x()
             for k in res.keys():
-                if res[k] is x:
-                    continue
-                else:
+                if res[k] is not x:
                     # Interpolate the results to compare.
                     d1 = InterpolatedUnivariateSpline(x.reshape((-1, )), res[k].reshape((-1, )))
                     d2 = InterpolatedUnivariateSpline(ref[ref.x].reshape((-1, )), ref[k].reshape((-1, )))
-                    ok_(np.allclose(d1(x.reshape((-1, ))), d2(x.reshape((-1, ))), rtol=self.er, atol=self.ea), "Test %s FAILED" % self.test_id)
+                    ok_(
+                        np.allclose(
+                            d1(x.reshape((-1,))),
+                            d2(x.reshape((-1,))),
+                            rtol=self.er,
+                            atol=self.ea,
+                        ),
+                        f"Test {self.test_id} FAILED",
+                    )
+
         elif isinstance(res, results.op_solution):
             for k in res.keys():
                 assert k in ref
-                ok_(np.allclose(res[k], ref[k], rtol=self.er, atol=self.ea), "Test %s FAILED" % self.test_id)
-        else:
-            if isinstance(res, list) or isinstance(res, tuple):
-                for i, j in zip(res, ref):
-                    self._check(i, j)
-            elif res is not None:
-                for k in res.keys():
-                    assert k in ref
-                    assert res[k] == ref[k]
+                ok_(
+                    np.allclose(res[k], ref[k], rtol=self.er, atol=self.ea),
+                    f"Test {self.test_id} FAILED",
+                )
+
+        elif isinstance(res, (list, tuple)):
+            for i, j in zip(res, ref):
+                self._check(i, j)
+        elif res is not None:
+            for k in res.keys():
+                assert k in ref
+                assert res[k] == ref[k]
 
     def test(self):
         res = self._run_test()
@@ -339,8 +357,6 @@ class APITest(unittest.TestCase):
                 os.rename(res_file, ref_file)
 
     def tearDown(self):
-        if self.ref_run:
-            pass
-        else:
+        if not self.ref_run:
             for f in self.rmfiles:
                 os.remove(f)

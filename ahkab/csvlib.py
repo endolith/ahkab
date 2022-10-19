@@ -59,8 +59,8 @@ def write_headers(filename, headers):
     """Writes headers in CVS format to filename."""
     fp = _get_fp(filename, mode="w")
     headers = copy.copy(headers)
-    if not headers[0][0] == '#':
-        headers[0] = '#' + headers[0]
+    if headers[0][0] != '#':
+        headers[0] = f'#{headers[0]}'
     for hi in range(len(headers)):
         fp.write(headers[hi])
         if hi < len(headers) - 1:
@@ -86,9 +86,7 @@ def _close_fp(fp, filename):
         fp.flush()
     except IOError:
         pass
-    if filename == 'stdout':
-        pass
-    else:
+    if filename != 'stdout':
         fp.close()
 
 
@@ -129,7 +127,7 @@ def get_csv_headers(filename):
     fp = _get_fp(filename, mode="r")
     headers = None
     line = ""
-    while line == "":
+    while not line:
         line = fp.readline()
         line = line.strip()
         if line[0] == '#':

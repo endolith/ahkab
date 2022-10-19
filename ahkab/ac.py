@@ -161,10 +161,7 @@ def ac_analysis(circ, start, points, stop, sweep_type, x0=None,
         AC = utilities.remove_row_and_col(AC)
 
     if circ.is_nonlinear():
-        if J is not None:
-            pass
-            # we used the supplied linearization matrix
-        else:
+        if J is None:
             if x0 is None:
                 printing.print_info_line(
                     ("Starting OP analysis to get a linearization point...", 3), verbose, print_nl=False)
@@ -186,7 +183,6 @@ def ac_analysis(circ, start, points, stop, sweep_type, x0=None,
             J = generate_J(xop=x0.asmatrix(), circ=circ, mna=mna,
                            Nac=Nac, data_filename=outfile, verbose=verbose)
             printing.print_info_line((" done.", 5), verbose)
-            # we have J, continue
     else:  # not circ.is_nonlinear()
         # no J matrix is required.
         J = 0
@@ -230,24 +226,21 @@ def ac_analysis(circ, start, points, stop, sweep_type, x0=None,
             MAXIT = options.ac_max_nr_iter,
             skip_Tt = True,
             verbose = 0)
-        if solved:
-            tick.step(verbose > 1)
-            iter_n = iter_n + 1
-            # hooray!
-            sol.add_line(omega, x)
-        else:
+        if not solved:
             break
 
+        tick.step(verbose > 1)
+        iter_n = iter_n + 1
+        # hooray!
+        sol.add_line(omega, x)
     tick.hide(verbose > 1)
 
     if solved:
         printing.print_info_line(("done.", 1), verbose)
-        ret_value = sol
+        return sol
     else:
         printing.print_info_line(("failed.", 1), verbose)
-        ret_value = None
-
-    return ret_value
+        return None
 
 
 def generate_AC(circ, shape):
@@ -281,8 +274,9 @@ def generate_AC(circ, shape):
     nv = len(circ.nodes_dict)  # - 1
     i_eq = 0  # each time we find a vsource or vcvs or ccvs, we'll add one to this.
     for elem in circ:
-        if isinstance(elem, devices.VSource) or isinstance(elem, devices.EVSource) or \
-                isinstance(elem, devices.HVSource):
+        if isinstance(
+            elem, (devices.VSource, devices.EVSource, devices.HVSource)
+        ):
             # notice that hvsources aren't yet implemented now!
             i_eq = i_eq + 1
         elif isinstance(elem, devices.Capacitor):

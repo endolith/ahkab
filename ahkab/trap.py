@@ -83,8 +83,12 @@ def get_df(pv_array, suggested_step, predict=True):
     C0 = -1.0 * ((2.0 / suggested_step) * pv_array[0][1] + pv_array[0][2])
     x_lte_coeff = (1.0 / 12) * (suggested_step ** 3)
 
-    if predict and len(pv_array) > 2 and pv_array[0][1] is not None and pv_array[1][1] is not None and \
-            pv_array[2][1] is not None:
+    if (
+        predict
+        and len(pv_array) > 2
+        and pv_array[1][1] is not None
+        and pv_array[2][1] is not None
+    ):
         A = numpy.mat(numpy.zeros((len(pv_array[0]), len(pv_array[0]))))
         A[0, :] = 0
         A[:, 0] = 1

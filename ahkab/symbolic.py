@@ -185,14 +185,12 @@ def symbolic_analysis(circ, source=None, ac_enable=True, r0s=False, subs=None, o
 def calculate_gains(sol, xin, optimize=True):
     gains = {}
     for key, value in sol.iteritems():
-        tf = {}
         gain = sympy.together(value.diff(xin)) if optimize else value.diff(xin)
         (ps, zs) = get_roots(gain)
-        tf.update({'gain': gain})
-        tf.update({'gain0': gain.subs(sympy.Symbol('s', complex=True), 0)})
-        tf.update({'poles': ps})
-        tf.update({'zeros': zs})
-        gains.update({"%s/%s" % (str(key), str(xin)): tf})
+        tf = {'gain': gain, 'gain0': gain.subs(sympy.Symbol('s', complex=True), 0)}
+        tf['poles'] = ps
+        tf['zeros'] = zs
+        gains[f"{str(key)}/{str(xin)}"] = tf
     return gains
 
 
@@ -200,7 +198,7 @@ def sol_to_dict(sol, x, optimize=True):
     ret = {}
     for index in range(x.shape[0]):
         sol_current = sympy.together(sol[index]) if optimize else sol[index]
-        ret.update({str(x[index]): sol_current})
+        ret[str(x[index])] = sol_current
     return ret
 
 
@@ -225,9 +223,9 @@ def get_variables(circ):
 
     for i in range(mna_size):
         if i < nv_1:
-            x[i, 0] = sympy.Symbol("V" + str(circ.nodes_dict[i + 1]))
+            x[i, 0] = sympy.Symbol(f"V{str(circ.nodes_dict[i + 1])}")
         else:
-            x[i, 0] = sympy.Symbol("I[" + idescr[i - nv_1] + "]")
+            x[i, 0] = sympy.Symbol(f"I[{idescr[i - nv_1]}]")
     return x
 
 
@@ -243,10 +241,7 @@ def to_real_list(M):
     Returns: a list.
     """
     fakelist = M.tolist()
-    reallist = []
-    for elem in fakelist:
-        reallist.append(elem[0])
-    return reallist
+    return [elem[0] for elem in fakelist]
 
 
 def generate_mna_and_N(circ, opts, ac=False, verbose=3):

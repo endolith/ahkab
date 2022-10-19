@@ -296,10 +296,14 @@ def set_next_solve_method(standard_solving, gmin_stepping, source_stepping, verb
 
 
 def more_solve_methods_available(standard_solving, gmin_stepping, source_stepping):
-    if (standard_solving["failed"] or not options.use_standard_solve_method) and (gmin_stepping["failed"] or not options.use_gmin_stepping) and (source_stepping["failed"] or not options.use_source_stepping):
-        return False
-    else:
-        return True
+    return bool(
+        not standard_solving["failed"]
+        and options.use_standard_solve_method
+        or not gmin_stepping["failed"]
+        and options.use_gmin_stepping
+        or not source_stepping["failed"]
+        and options.use_source_stepping
+    )
 
 
 def get_solve_methods():

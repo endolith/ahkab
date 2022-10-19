@@ -334,10 +334,10 @@ def new_pss(period, x0=None, points=None, method='brute-force', autonomous=False
         if options.cli:
             outfile = 'stdout'
         else:
-            ofi, outfile = tempfile.mkstemp(suffix='.' + method.lower())
+            ofi, outfile = tempfile.mkstemp(suffix=f'.{method.lower()}')
             _of.append(ofi)  # keep the file open until quitting
     else:
-        outfile += '.' + method.lower()
+        outfile += f'.{method.lower()}'
     return {
         'type': "pss", "method": method, 'period': period, 'points': points,
         'autonomous': autonomous, 'x0': x0, 'outfile': outfile, 'verbose': verbose}
@@ -465,7 +465,7 @@ def run(circ, an_list=None):
                                    (an_type.upper(), an_item['x0']))
             an_item['x0'] = None
         r = analysis[an_type](circ, **an_item)
-        results.update({an_type: r})
+        results[an_type] = r
         if an_type == 'op':
             _x0s.update({'op': r})
             _x0s.update({'op+ic': icmodified_x0(circ, r)})
@@ -675,5 +675,5 @@ def _handle_netlist_ics(circ, an_list, ic_list):
             if an['x0'] in _x0s.keys():
                 an['x0'] = _x0s[an['x0']]
             elif an_list.index(an) == 0:
-                printing.print_general_error("Unknown x0 %s" % an["x0"])
+                printing.print_general_error(f'Unknown x0 {an["x0"]}')
                 sys.exit(54)

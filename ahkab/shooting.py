@@ -266,24 +266,26 @@ def build_Tass_static_vector(circ, Tf, points, step, tick, n_of_var, verbose=3):
     tick.reset()
     tick.display(verbose > 2)
     for index in xrange(0, points):
-            Tt = numpy.zeros((n_of_var, 1))
-            v_eq = 0
-            time = index * step
-            for elem in circ:
-                    if (isinstance(elem, devices.VSource) or isinstance(elem, devices.ISource)) and elem.is_timedependent:
-                        if isinstance(elem, devices.VSource):
-                                Tt[nv - 1 + v_eq, 0] = -1.0 * elem.V(time)
-                        elif isinstance(elem, devices.ISource):
-                                if elem.n1:
-                                        Tt[elem.n1 - 1, 0] = \
-                                            Tt[elem.n1 - 1, 0] + elem.I(time)
-                                if elem.n2:
-                                        Tt[elem.n2 - 1, 0] = \
-                                            Tt[elem.n2 - 1, 0] - elem.I(time)
-                    if circuit.is_elem_voltage_defined(elem):
-                            v_eq = v_eq + 1
-            tick.step(verbose > 2)
-            Tass_vector.append(Tf + Tt)
+        Tt = numpy.zeros((n_of_var, 1))
+        v_eq = 0
+        time = index * step
+        for elem in circ:
+            if (
+                isinstance(elem, (devices.VSource, devices.ISource))
+            ) and elem.is_timedependent:
+                if isinstance(elem, devices.VSource):
+                    Tt[nv - 1 + v_eq, 0] = -1.0 * elem.V(time)
+                else:
+                    if elem.n1:
+                            Tt[elem.n1 - 1, 0] = \
+                                Tt[elem.n1 - 1, 0] + elem.I(time)
+                    if elem.n2:
+                            Tt[elem.n2 - 1, 0] = \
+                                Tt[elem.n2 - 1, 0] - elem.I(time)
+            if circuit.is_elem_voltage_defined(elem):
+                    v_eq = v_eq + 1
+        tick.step(verbose > 2)
+        Tass_vector.append(Tf + Tt)
     tick.hide(verbose > 2)
     printing.print_info_line(("done.", 5), verbose)
 
@@ -306,7 +308,7 @@ def get_variable_MAass_and_Tass(circ, xi, xi_minus_1, M, D, step, n_of_var):
                 for port in ports:
                     v = 0  # build v: remember we trashed the 0 row and 0 col of mna -> -1
                     if port[0]:
-                        v = v + xi[port[0] - 1, 0]
+                        v += xi[port[0] - 1, 0]
                     if port[1]:
                         v = v - xi[port[1] - 1, 0]
                     v_ports.append(v)
@@ -353,12 +355,11 @@ def compute_dxN(circ, MAass_vector, MBass, Tass_vector, n_of_var, points, verbos
                 numpy.linalg.inv(MAass_vector[index2]) * MBass * temp_mat3
         temp_mat2 = temp_mat2 + temp_mat3
 
-    dxN = numpy.linalg.inv(
-        numpy.mat(numpy.eye(n_of_var)) - temp_mat1) * temp_mat2
-
-    return dxN
+    return (
+        numpy.linalg.inv(numpy.mat(numpy.eye(n_of_var)) - temp_mat1)
+        * temp_mat2
+    )
 
 
 def compute_dx(MAass, MBass, Tass, dxi_minus_1):
-    dxi = -1 * numpy.linalg.inv(MAass) * (MBass * dxi_minus_1 + Tass)
-    return dxi
+    return -1 * numpy.linalg.inv(MAass) * (MBass * dxi_minus_1 + Tass)

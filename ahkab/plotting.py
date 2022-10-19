@@ -31,14 +31,13 @@ from . import options
 
 
 def read_data_header(filename):
-    fp = open(filename, "r")
-    line = fp.readline()
-    if line[0] == '#':
-        labels = line[1:].upper().split()
-    else:
-        printing.print_general_error("Unrecognized file: " + filename)
-        labels = None
-    fp.close()
+    with open(filename, "r") as fp:
+        line = fp.readline()
+        if line[0] == '#':
+            labels = line[1:].upper().split()
+        else:
+            printing.print_general_error(f"Unrecognized file: {filename}")
+            labels = None
     return labels
 
 
@@ -50,21 +49,17 @@ def get_data_label_index(label, filename, labels=None):
 
 def read_data(filename, label, labels=None):
     label = label.upper()
-    if labels == None:
+    if labels is None:
         labels = read_data_header(filename)
     else:
         labels = map(str.upper, labels)
     try:
         index = labels.index(label)
-        fp = open(filename, "r")
-        data = []
-        for line in fp:
-            if line.strip()[0] != '#':
-                data.append(float(line.split()[index]))
-        fp.close()
+        with open(filename, "r") as fp:
+            data = [float(line.split()[index]) for line in fp if line.strip()[0] != '#']
         data = numpy.array(data)
     except ValueError:
-        printing.print_general_error("Unrecognized data set: " + label)
+        printing.print_general_error(f"Unrecognized data set: {label}")
         data = None
     return data
 
@@ -75,23 +70,23 @@ def split_netlist_label(labels_string):
     p = re.compile(r'V\s*\(\s*(\w*)\s*,\s*(\w*)\s*\)', re.IGNORECASE)
     labels_list = p.findall(labels_string)
     for i in range(len(labels_list)):
-        l2 = "V" + labels_list[i][0]
-        l1 = "V" + labels_list[i][1]
+        l2 = f"V{labels_list[i][0]}"
+        l1 = f"V{labels_list[i][1]}"
         ret_labels.append((l2, l1))
     p = re.compile(r'V\s*\(\s*(\w*)\s*\)', re.IGNORECASE)
     labels_list = p.findall(labels_string)
     for i in range(len(labels_list)):
-        l2 = "V" + labels_list[i]
+        l2 = f"V{labels_list[i]}"
         l1 = None
         ret_labels.append((l2, l1))
     p = re.compile(r'I\s*\(\s*(\w*)\s*\)', re.IGNORECASE)
     labels_list = p.findall(labels_string)
+    l1 = None
     for i in range(len(labels_list)):
-        l2 = "I(" + labels_list[i] + ")"
-        l1 = None
+        l2 = f"I({labels_list[i]})"
         ret_labels.append((l2, l1))
-    if len(ret_labels) == 0:
-        raise Exception, "Unrecognized plot labels: " + labels_string
+    if not ret_labels:
+        raise (Exception, f"Unrecognized plot labels: {labels_string}")
     return ret_labels
 
 
@@ -121,12 +116,10 @@ def setup_plot(fig, title, xvu, yvu, log=False, xlog=False, ylog=False):
     yunits = []
     yinitials = []
     for yv, yu in yvu:
-        if not yu in yunits:
+        if yu not in yunits:
             yunits.append(yu)
             yinitials.append(yv[0])
-    ylabel = ""
-    for yi, yu in zip(yinitials, yunits):
-        ylabel += "%s [%s] , " % (yi, yu)
+    ylabel = "".join(f"{yi} [{yu}] , " for yi, yu in zip(yinitials, yunits))
     ylabel = ylabel[:-3]
     pylab.ylabel(ylabel)
 
@@ -151,15 +144,15 @@ def plot_results(title, y2y1_list, results, outfilename):
         return
     fig = pylab.figure()
     analysis = results.get_type().upper()
-    gdata = []
     x, xlabel = results.get_x(), results.get_xlabel()
     xunit = results.units[xlabel]
     yvu = []
 
+    gdata = []
     for y2label, y1label in y2y1_list:
         if y1label is not None and y1label != '':
             data1 = results[y1label]
-            line_label = y2label + "-" + y1label
+            line_label = f"{y2label}-{y1label}"
         else:
             line_label = y2label
             data1 = 0
@@ -167,19 +160,22 @@ def plot_results(title, y2y1_list, results, outfilename):
         yvu += [(line_label, results.units[y2label])]
         gdata.append((data2 - data1, line_label))
 
-    if xlabel == 'w':
-        xlog = True
-    else:
-        xlog = False
+    xlog = xlabel == 'w'
     setup_plot(fig, title, (xlabel, xunit), yvu, xlog=xlog)
 
     pylab.hold(True)
     ymax, ymin = None, None
     for y, label in gdata:
         [line] = pylab.plot(
-            x, y, options.plotting_style, label=label +
-            " (" + analysis + ")",
-            mfc='w', lw=options.plotting_lw, mew=options.plotting_lw)
+            x,
+            y,
+            options.plotting_style,
+            label=f"{label} ({analysis})",
+            mfc='w',
+            lw=options.plotting_lw,
+            mew=options.plotting_lw,
+        )
+
         line.set_mec(line.get_color())  # nice empty circles
         ymax = y.max() if ymax is None or y.max() > ymax else ymax
         ymin = y.min() if ymin is None or y.min() < ymin else ymin
